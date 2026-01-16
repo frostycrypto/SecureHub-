@@ -1,0 +1,243 @@
+
+Estrutura 
+  Projetosecurehub/
+├─ backend/
+│  ├─ package.json
+│  ├─ server.js
+│  ├─ routes/
+│  │  └─ auth.js
+│  ├─ controllers/
+│  │  └─ authController.js
+│  ├─ models/
+│  │  └─ User.js
+│  └─ config/
+│     └─ db.js
+├─ frontend/
+│  ├─ package.json
+│  ├─ public/
+│  └─ src/
+│     ├─ App.jsx
+│     ├─ index.jsx
+│     ├─ components/
+│     │  ├─ LoginForm.jsx
+│     │  └─ RegisterForm.jsx
+│     └─ pages/
+│        └─ Dashboard.jsx
+├─ .gitignore
+└─ README.md
+
+                                  Backend Básico (Node.js + Express + MongoDB)
+                                           
+                                           
+                                           
+                                     {
+  "name": "securehub-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.1",
+    "mongoose": "^7.6.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
+
+                               backend/config/db.js
+          const mongoose = require("mongoose");
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB conectado!");
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+};
+
+
+                           backend/models/User.js
+   const mongoose = require("mongoose");
+
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true }
+});
+
+module.exports = mongoose.model("User", UserSchema);
+
+
+
+
+                               
+                 backend/controllers/authController.js
+             const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+exports.register = async (req, res) => {
+  const { name, email, password } = req.body;
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ msg: "Usuário já existe" });
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = new User({ name, email, password: hashedPassword });
+    await newUser.save();
+
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    res.json({ token, user: { id: newUser._id, name: newUser.name, email: newUser.email } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ msg: "Usuário não encontrado" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ msg: "Senha incorreta" });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+
+
+
+                          backend/routes/auth.js
+                       const express = require("express");
+const router = express.Router();
+const { register, login } = require("../controllers/authController");
+
+router.post("/register", register);
+router.post("/login", login);
+
+module.exports = router;
+
+
+
+
+                      backend/server.js
+            const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const connectDB = require("./config/db");
+const authRoutes = require("./routes/auth");
+
+dotenv.config();
+connectDB();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.use("/api/auth", authRoutes);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+
+
+
+
+                              frontend/src/App.jsx    (React + Tailwind)
+           import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import RegisterForm from "./components/RegisterForm";
+import LoginForm from "./components/LoginForm";
+import Dashboard from "./pages/Dashboard";
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/register" element={<RegisterForm />} />
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
+
+
+
+
+
+
+
+
+
+
+
+                              frontend/src/components/RegisterForm.jsx
+     import React, { useState } from "react";
+import axios from "axios";
+
+export default function RegisterForm() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post("http://localhost:5000/api/auth/register", { name, email, password });
+      alert("Usuário registrado com sucesso!");
+    } catch (err) {
+      alert(err.response.data.msg);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-4">
+      <input placeholder="Nome" value={name} onChange={e => setName(e.target.value)} />
+      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+      <input placeholder="Senha" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+      <button type="submit">Registrar</button>
+    </form>
+  );
+}
+
+
+
+
+
+
+
+                    frontend/src/pages/Dashboard.jsx
+     import React from "react";
+
+export default function Dashboard() {
+  return (
+    <div>
+      <h1>Bem-vindo ao SecureHub!</h1>
+      <p>Seu painel seguro de produtividade e senhas.</p>
+    </div>
+  );
+}
+
+
+MONGO_URI=seu_mongodb_uri
+JWT_SECRET=sua_chave_secreta
+
+                          
