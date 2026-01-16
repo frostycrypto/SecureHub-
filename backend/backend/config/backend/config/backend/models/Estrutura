@@ -1,0 +1,25 @@
+securehub/
+├─ backend/
+│  ├─ package.json
+│  ├─ server.js
+│  ├─ routes/
+│  │  └─ auth.js
+│  ├─ controllers/
+│  │  └─ authController.js
+│  ├─ models/
+│  │  └─ User.js
+│  └─ config/
+│     └─ db.js
+├─ frontend/
+│  ├─ package.json
+│  ├─ public/
+│  └─ src/
+│     ├─ App.jsx
+│     ├─ index.jsx
+│     ├─ components/
+│     │  ├─ LoginForm.jsx
+│     │  └─ RegisterForm.jsx
+│     └─ pages/
+│        └─ Dashboard.jsx
+├─ .gitignore
+└─ README.md
